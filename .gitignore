@@ -1,0 +1,8 @@
+# Your access token and personal preferences live here. Never commit it.
+config.json
+
+__pycache__/
+*.py[cod]
+.DS_Store
+*.log
+.venv/

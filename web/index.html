@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-theme="clay">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CodeTails">
+<title>CodeTails</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="app" class="booting">
+
+  <!-- ───────────────────────────── rail ───────────────────────────── -->
+  <nav id="rail" aria-label="Primary">
+    <button class="rail-btn brand" data-act="toggle-drawer" title="Sessions">
+      <span class="glyph spark">✻</span>
+    </button>
+    <button class="rail-btn" data-act="new" title="New session (⌘N)"><span class="glyph">＋</span></button>
+    <button class="rail-btn" data-act="palette" title="Commands (⌘K)"><span class="glyph">/</span></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-btn" data-act="share" title="Reach from anywhere"><span class="glyph">⌘</span></button>
+    <button class="rail-btn" data-act="skins" title="Skins (⌘J)"><span class="glyph">◐</span></button>
+    <button class="rail-btn" data-act="settings" title="Settings"><span class="glyph">⚙</span></button>
+  </nav>
+
+  <!-- ─────────────────────────── drawer ───────────────────────────── -->
+  <aside id="drawer" aria-label="Sessions">
+    <header class="drawer-head">
+      <div class="wordmark"><span class="spark">✻</span> CodeTails</div>
+      <button class="icon-btn" data-act="close-drawer" title="Close">✕</button>
+    </header>
+
+    <button class="new-session-btn" data-act="new">
+      <span class="plus">＋</span> New session
+      <kbd>⌘N</kbd>
+    </button>
+
+    <div class="drawer-scroll">
+      <section class="group" id="live-group" hidden>
+        <h3 class="group-title">Live <span class="count" id="live-count">0</span></h3>
+        <div id="live-list" class="list"></div>
+      </section>
+
+      <section class="group">
+        <h3 class="group-title">Projects</h3>
+        <div id="project-list" class="list"></div>
+      </section>
+    </div>
+
+    <footer class="drawer-foot">
+      <div class="net-line" id="net-line"><span class="dot"></span><span id="net-text">connecting…</span></div>
+    </footer>
+  </aside>
+
+  <!-- ──────────────────────────── main ────────────────────────────── -->
+  <main id="main">
+    <header id="topbar">
+      <button class="icon-btn only-mobile" data-act="toggle-drawer" title="Sessions">☰</button>
+      <div class="crumbs">
+        <span class="proj" id="tb-project">—</span>
+        <span class="sep">/</span>
+        <span class="ttl" id="tb-title">no session</span>
+      </div>
+      <div class="chips">
+        <button class="chip" id="chip-git" hidden></button>
+        <button class="chip" id="chip-model" data-act="cycle-model" title="Model"></button>
+        <button class="chip" id="chip-mode" data-act="cycle-mode" title="Permission mode"></button>
+        <div class="chip meter" id="chip-ctx" title="Context used" hidden>
+          <span class="meter-fill"></span><span class="meter-label"></span>
+        </div>
+        <span class="chip cost" id="chip-cost" hidden></span>
+        <span class="status-dot" id="status-dot" title="idle"></span>
+      </div>
+    </header>
+
+    <div id="stream-wrap">
+      <div id="stream" role="log" aria-live="polite"></div>
+      <button id="jump" hidden>↓ latest</button>
+    </div>
+
+    <footer id="composer">
+      <div id="runline" hidden>
+        <span class="spin">✻</span>
+        <span id="run-verb">Thinking</span>
+        <span class="run-meta" id="run-meta"></span>
+        <button class="stop-btn" data-act="stop">esc to stop</button>
+      </div>
+
+      <div class="prompt-box" id="prompt-box">
+        <span class="caret">&gt;</span>
+        <textarea id="input" rows="1" placeholder="Ask Claude Code anything…"
+                  autocomplete="off" autocapitalize="sentences" spellcheck="false"
+                  enterkeyhint="send"></textarea>
+        <button class="send-btn" data-act="send" title="Send">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <path d="M4 12h13M12 5l7 7-7 7" fill="none" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="hintbar">
+        <div class="quick">
+          <button class="qchip" data-insert="/">/ commands</button>
+          <button class="qchip" data-insert="continue">continue</button>
+          <button class="qchip" data-act="cycle-mode" id="q-mode">mode</button>
+          <button class="qchip only-mobile" data-act="new">＋ new</button>
+        </div>
+        <div class="hint" id="hint">⏎ send · ⇧⏎ newline · ⌘K commands</div>
+      </div>
+    </footer>
+  </main>
+
+  <div id="scrim"></div>
+
+  <!-- ─────────────────────────── overlays ─────────────────────────── -->
+  <div class="sheet" id="sheet-new" hidden>
+    <div class="sheet-card">
+      <header><h2>New session</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="sheet-body">
+        <label class="field">
+          <span>Working directory</span>
+          <div class="path-row">
+            <input id="new-cwd" spellcheck="false" autocapitalize="off">
+            <button class="mini" data-act="browse">browse</button>
+          </div>
+        </label>
+        <div id="browser" class="browser" hidden></div>
+        <div class="field-row">
+          <label class="field"><span>Model</span><select id="new-model"></select></label>
+          <label class="field"><span>Permissions</span><select id="new-mode"></select></label>
+        </div>
+        <label class="field"><span>Effort</span><select id="new-effort"></select></label>
+        <div class="recent" id="new-recent"></div>
+      </div>
+      <footer><button class="ghost" data-close>Cancel</button><button class="primary" data-act="create">Start session</button></footer>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet-share" hidden>
+    <div class="sheet-card">
+      <header><h2>Reach from anywhere</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="sheet-body share-body">
+        <div class="qr-holder" id="qr-holder"></div>
+        <div class="share-urls" id="share-urls"></div>
+        <p class="muted">Scan on your phone while it's on the same tailnet. The link carries the
+          access token — anyone with it can drive Claude Code on this machine.</p>
+      </div>
+      <footer><button class="ghost" data-close>Close</button></footer>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet-skins" hidden>
+    <div class="sheet-card wide">
+      <header><h2>Skins</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="sheet-body">
+        <div class="skin-grid" id="skin-grid"></div>
+        <h3 class="sub">Tune</h3>
+        <div class="tuner" id="tuner"></div>
+        <div class="swatches" id="swatches"></div>
+        <div class="skin-actions">
+          <button class="mini" data-act="save-skin">Save as skin…</button>
+          <button class="mini" data-act="export-skin">Export</button>
+          <button class="mini" data-act="import-skin">Import</button>
+          <button class="mini danger" data-act="reset-skin">Reset</button>
+        </div>
+      </div>
+      <footer><button class="primary" data-close>Done</button></footer>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet-settings" hidden>
+    <div class="sheet-card">
+      <header><h2>Settings</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="sheet-body" id="settings-body"></div>
+      <footer><button class="primary" data-close>Done</button></footer>
+    </div>
+  </div>
+
+  <div class="palette" id="palette" hidden>
+    <div class="palette-card">
+      <input id="palette-input" placeholder="Type a command or search…" spellcheck="false" autocapitalize="off">
+      <div class="palette-list" id="palette-list"></div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+</div>
+
+<script src="/static/themes.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
