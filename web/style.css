@@ -1504,9 +1504,35 @@ body[data-thread="1"] .turn-result, body[data-thread="1"] .chip.cost {
 body[data-thread="1"] .prose code {
   color: var(--accent2); background: var(--bg3); border: 1px solid var(--borderSoft);
 }
+/* …but only the inline kind — fenced blocks keep their own surface */
+body[data-thread="1"] .codewrap pre code {
+  background: none; border: 0; padding: 0; color: var(--text);
+}
 body[data-thread="1"] .field input, body[data-thread="1"] .field select {
   background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
 }
+/* code reads in the theme's own voice: diffs separate by brightness rather than
+   hue — added is white on a lift, removed is grey on a sink — and the syntax
+   tokens borrow the foil pastels instead of terminal green and red */
+body[data-thread="1"] .diff { border-color: var(--borderSoft); }
+body[data-thread="1"] .diff-file { background: var(--bg); color: var(--dim); }
+body[data-thread="1"] .diff-file .stat .add { color: #f4f4f5; }
+body[data-thread="1"] .diff-file .stat .del { color: var(--dim); }
+body[data-thread="1"] .diff pre { background: var(--bg); }
+body[data-thread="1"] .diff .l.add { color: #f4f4f5; background: #1a1a1d; }
+body[data-thread="1"] .diff .l.del { color: #8a8a92; background: #101012; }
+body[data-thread="1"] .diff .l.ctx { color: var(--faint); background: transparent; }
+
+body[data-thread="1"] .codewrap pre { background: var(--bg); border-color: var(--borderSoft); }
+body[data-thread="1"] .tk-kw  { color: #b8c0ff; }
+body[data-thread="1"] .tk-str { color: #f7c6ff; }
+body[data-thread="1"] .tk-fn  { color: #a0f0ff; }
+body[data-thread="1"] .tk-num { color: #fff3b0; }
+body[data-thread="1"] .tk-com { color: var(--faint); }
+body[data-thread="1"] .tk-op  { color: var(--dim); }
+body[data-thread="1"] .tool-out { color: var(--dim); }
+body[data-thread="1"] .tool-out.err { color: var(--err); }
+
 html[data-anim="off"] body[data-thread="1"] * { animation: none !important; }
 
 /* ── animation ───────────────────────────────────────────────────────── */
