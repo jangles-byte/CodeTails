@@ -532,7 +532,14 @@ class Session:
         self.emit({"t": "notice", "kind": "config", "text": ", ".join(changed) + " (session resumed)"})
         self.start()
 
-    def _kill_proc(self) -> None:
+    def _kill_proc(self, graceful: bool = True) -> None:
+        """Stop the CLI.
+
+        Anything Claude started with Bash — a dev server, a watcher — is in the
+        same process group, so signalling the group would take it down with us.
+        On an ordinary respawn we ask only the `claude` process to leave and let
+        it tidy up after itself; the group is a last resort against orphans.
+        """
         proc = self._proc
         self._proc = None
         if not proc:
@@ -542,11 +549,22 @@ class Session:
                 proc.stdin.close()
         except Exception:
             pass
+
+        if graceful:
+            try:
+                proc.terminate()                       # this pid only
+                proc.wait(timeout=4)
+                return
+            except subprocess.TimeoutExpired:
+                pass
+            except Exception:
+                pass
+
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         except Exception:
             try:
-                proc.terminate()
+                proc.kill()
             except Exception:
                 pass
 
