@@ -92,12 +92,142 @@ function themeObject(name) {
 function applyTheme(name, overrides) {
   const base = { ...themeObject(name), ...(overrides || {}) };
   const root = document.documentElement;
-  for (const [k] of window.CT_TOKENS) if (base[k]) root.style.setProperty('--' + k, base[k]);
+  const all = [...window.CT_TOKENS, ...window.CT_TOKENS_MODERN];
+  for (const [k] of all) root.style.removeProperty('--' + k);
+  for (const [k] of all) if (base[k]) root.style.setProperty('--' + k, base[k]);
   root.dataset.theme = name;
+  document.body.dataset.surface = base.style || 'terminal';
+  document.body.dataset.holo = base.holo ? '1' : '0';
+  document.body.dataset.space = base.space ? '1' : '0';
+  paintBackdrop(base);
   const lum = luminance(base.bg || '#000');
   document.body.dataset.light = lum > 0.5 ? '1' : '0';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', base.bg || '#000');
   state.theme = base;
+}
+
+/* ── holographic foil ───────────────────────────────────────────────────
+   The reference is shattered iridescent flake on near-black. Rather than ship
+   a photo, we scatter one: a few thousand tiny spectral shards drawn onto a
+   tiling canvas, wrapped at the edges so the tile is seamless. */
+const HOLO_HUES = ['#7b5cff', '#35e8f2', '#3dff9e', '#ffd24a', '#ff7a45',
+                   '#ff4fd8', '#4d7bff', '#b8ff5c', '#ffffff'];
+
+function glitterTile(size = 512, count = 8600) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+
+  const shard = (x, y, r, color, alpha) => {
+    g.beginPath();
+    const pts = 3 + ((Math.random() * 3) | 0);
+    for (let i = 0; i < pts; i++) {
+      const a = (i / pts) * Math.PI * 2 + Math.random() * 0.9;
+      const rr = r * (0.45 + Math.random() * 0.75);
+      const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+      i ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.closePath();
+    g.globalAlpha = alpha;
+    g.fillStyle = color;
+    g.fill();
+  };
+
+  // two passes: a dense field of fine grain, then a few big glints on top
+  for (let i = 0; i < count; i++) {
+    const hero = i > count - 130;
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = hero ? 3.2 + Math.random() * 3.4
+                   : 0.55 + Math.pow(Math.random(), 3.4) * 2.9;
+    const color = HOLO_HUES[(Math.random() * HOLO_HUES.length) | 0];
+    const alpha = hero ? 0.55 + Math.random() * 0.4 : 0.22 + Math.random() * 0.66;
+    // draw the shard, plus wrapped copies so the tile has no visible seam
+    for (const dx of [0, -size, size]) {
+      for (const dy of [0, -size, size]) {
+        if ((dx || dy) && (Math.min(x, size - x) > r + 2 && Math.min(y, size - y) > r + 2)) continue;
+        shard(x + dx, y + dy, r, color, alpha);
+      }
+    }
+  }
+  g.globalAlpha = 1;
+  return c.toDataURL('image/png');
+}
+
+/* ── deep field ─────────────────────────────────────────────────────────
+   Same idea as the foil, colder physics: dust, ordinary stars, and a handful
+   of bright ones with a real glow. Wrapped at the edges so the sky tiles. */
+const STAR_TINTS = ['#ffffff', '#ffffff', '#cfe0ff', '#a9c6ff', '#ffe4bd', '#ffd0d8'];
+
+function starTile(size = 640) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+
+  const at = (fn, x, y, pad) => {
+    for (const dx of [0, -size, size]) {
+      for (const dy of [0, -size, size]) {
+        if ((dx || dy) && Math.min(x, size - x) > pad && Math.min(y, size - y) > pad) continue;
+        fn(x + dx, y + dy);
+      }
+    }
+  };
+
+  // dust — barely there, but it is what stops the sky looking empty
+  for (let i = 0; i < 2600; i++) {
+    g.globalAlpha = 0.05 + Math.random() * 0.24;
+    g.fillStyle = Math.random() < 0.82 ? '#ffffff' : '#bcd4ff';
+    g.fillRect(Math.random() * size, Math.random() * size, 1, 1);
+  }
+
+  // ordinary stars
+  for (let i = 0; i < 520; i++) {
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = 0.5 + Math.pow(Math.random(), 2) * 1.1;
+    const tint = STAR_TINTS[(Math.random() * STAR_TINTS.length) | 0];
+    const a = 0.32 + Math.random() * 0.6;
+    at((px, py) => {
+      g.globalAlpha = a; g.fillStyle = tint;
+      g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+    }, x, y, r + 2);
+  }
+
+  // the bright few, with a halo
+  for (let i = 0; i < 34; i++) {
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = 1.3 + Math.random() * 1.2;
+    const halo = 7 + Math.random() * 11;
+    const tint = STAR_TINTS[(Math.random() * STAR_TINTS.length) | 0];
+    at((px, py) => {
+      const grad = g.createRadialGradient(px, py, 0, px, py, halo);
+      grad.addColorStop(0, tint);
+      grad.addColorStop(0.18, tint);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.globalAlpha = 0.5;
+      g.fillStyle = grad;
+      g.beginPath(); g.arc(px, py, halo, 0, 7); g.fill();
+      g.globalAlpha = 0.95; g.fillStyle = tint;
+      g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+    }, x, y, halo + 2);
+  }
+
+  g.globalAlpha = 1;
+  return c.toDataURL('image/png');
+}
+
+/* one <style> element holds whichever backdrop the current skin asked for */
+function paintBackdrop(theme) {
+  const want = theme.holo ? 'holo' : theme.space ? 'space' : null;
+  const node = $('#ct-backdrop');
+  if (!want) { node?.remove(); return; }
+  if (node && node.dataset.kind === want) return;
+  node?.remove();
+  const style = el('style');
+  style.id = 'ct-backdrop';
+  style.dataset.kind = want;
+  style.textContent = want === 'holo'
+    ? `:root{--holo-tex:url(${glitterTile()})}`
+    : `:root{--star-tex:url(${starTile()})}`;
+  document.head.append(style);
 }
 
 function luminance(hex) {
@@ -432,14 +562,29 @@ function handleEvent(ev) {
   autoScroll();
 }
 
-function mount(key, node, ts) {
+function mount(key, node, ts, side) {
   const prev = state.blocks.get(key);
   if (prev) return prev;
   timeSep(ts);
   const rec = { node };
   state.blocks.set(key, rec);
   $('#stream').insertBefore(node, $('#typing'));
+  if (side) flow(node, side);
   return rec;
+}
+
+/* who said it, and is this the last bubble of their run? only the last one
+   gets a tail — the same grouping every messaging app uses */
+function flow(node, side) {
+  node.dataset.side = side;
+  let prev = node.previousElementSibling;
+  while (prev && !prev.dataset.side) prev = prev.previousElementSibling;
+  if (prev && prev.dataset.side === side) {
+    prev.classList.remove('tail');
+    node.classList.add('tail', 'cont');
+  } else {
+    node.classList.add('tail', 'head');
+  }
 }
 
 /* iMessage-style time break when the conversation has been quiet a while */
@@ -489,7 +634,7 @@ function addUser(ev) {
   if (state.blocks.has(key)) return;
   const n = el('div', 'blk msg-user');
   n.innerHTML = `<span class="caret">&gt;</span><div class="body">${esc(ev.text)}</div>`;
-  mount(key, n, ev.ts);
+  mount(key, n, ev.ts, 'me');
   state.stick = true;
 }
 
@@ -499,7 +644,7 @@ function textBlock(ev) {
   if (!rec) {
     const n = el('div', 'blk msg-assistant');
     n.innerHTML = '<div class="prose"></div>';
-    rec = mount(key, n, ev.ts);
+    rec = mount(key, n, ev.ts, 'ai');
     rec.raw = '';
     rec.prose = n.querySelector('.prose');
   }
@@ -534,7 +679,7 @@ function thinkBlock(ev) {
   if (!rec) {
     const n = el('div', 'blk thinking collapsed');
     n.innerHTML = '<span class="th-head">thinking</span><div class="th-text"></div>';
-    rec = mount(key, n, ev.ts);
+    rec = mount(key, n, ev.ts, 'note');
     rec.raw = '';
     rec.body = n.querySelector('.th-text');
     n.querySelector('.th-head').onclick = () => n.classList.toggle('collapsed');
@@ -552,6 +697,30 @@ function setThinkBlock(ev) {
 
 /* ───────────────────────────── tool rows ─────────────────────────────── */
 const TOOL_LABEL = { Edit: 'Update', NotebookEdit: 'Notebook', Task: 'Agent', WebFetch: 'Fetch', WebSearch: 'Search' };
+
+const TOOL_FAMILY = {
+  Bash: 'shell', Edit: 'write', Write: 'write', NotebookEdit: 'write',
+  Read: 'read', Glob: 'find', Grep: 'find',
+  WebFetch: 'web', WebSearch: 'web',
+  Task: 'agent', Skill: 'agent', Agent: 'agent',
+  TodoWrite: 'plan', TaskCreate: 'plan', TaskUpdate: 'plan', TaskList: 'plan',
+};
+const toolFamily = (name) => TOOL_FAMILY[name] || (String(name).startsWith('mcp__') ? 'web' : 'other');
+
+const ICONS = {
+  shell: '<path d="M4 17l5-5-5-5"/><path d="M12.5 19H20"/>',
+  write: '<path d="M4 20h4L20 8l-4-4L4 16v4z"/>',
+  read:  '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/>',
+  find:  '<circle cx="11" cy="11" r="6.2"/><path d="M19.5 19.5l-4-4"/>',
+  web:   '<circle cx="12" cy="12" r="8.2"/><path d="M3.8 12h16.4"/><path d="M12 3.8a15 15 0 010 16.4a15 15 0 010-16.4"/>',
+  agent: '<path d="M12 3l2 6.2L20 11l-6 1.8L12 19l-2-6.2L4 11l6-1.8z"/>',
+  plan:  '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
+  other: '<circle cx="12" cy="12" r="4.6"/>',
+};
+
+const toolIcon = (name) =>
+  `<svg class="ticon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[toolFamily(name)]}</svg>`;
 
 function toolSummary(name, input) {
   const i = input || {};
@@ -579,13 +748,13 @@ function upsertTool(ev) {
   if (!rec) {
     const n = el('div', 'blk tool pending');
     n.innerHTML = `<div class="tool-head">
-        <span class="bullet">⏺</span>
+        <span class="bullet"><span class="glyph">⏺</span></span>
         <span class="tool-name"></span>
         <span class="tool-args"></span>
         <span class="tool-meta"></span>
       </div>
       <div class="tool-body hidden"></div>`;
-    rec = mount(key, n, ev.ts);
+    rec = mount(key, n, ev.ts, 'tool');
     rec.body = n.querySelector('.tool-body');
     rec.open = false;
     n.querySelector('.tool-head').onclick = () => {
@@ -595,6 +764,9 @@ function upsertTool(ev) {
   }
   rec.name = ev.name || rec.name;
   rec.input = (ev.input && Object.keys(ev.input).length) ? ev.input : rec.input;
+  rec.node.dataset.tool = toolFamily(rec.name);
+  const bullet = rec.node.querySelector('.bullet');
+  if (bullet && !bullet.querySelector('svg')) bullet.insertAdjacentHTML('beforeend', toolIcon(rec.name));
   const head = rec.node.querySelector('.tool-head');
   head.querySelector('.tool-name').textContent = TOOL_LABEL[rec.name] || rec.name || '…';
   head.querySelector('.tool-args').textContent = toolSummary(rec.name, rec.input);
@@ -1125,20 +1297,23 @@ function fillSkins() {
   const grid = $('#skin-grid');
   grid.textContent = '';
   const all = { ...window.CT_THEMES, ...(state.cfg.custom_themes || {}) };
-  Object.entries(all).forEach(([name, t]) => {
-    const b = el('button', 'skin' + (state.cfg.theme === name ? ' on' : ''));
-    b.innerHTML = `<div class="sw">
-        <i style="background:${t.bg}"></i><i style="background:${t.accent}"></i>
-        <i style="background:${t.text}"></i><i style="background:${t.ok}"></i>
-        <i style="background:${t.border}"></i></div>
-      <div class="nm">${esc(t.label || name)}</div>
-      <div class="nt">${esc(t.note || 'custom')}</div>`;
-    b.onclick = () => {
-      applyTheme(name);
-      saveCfg({ theme: name });
-      fillSkins();
-    };
-    grid.append(b);
+  const fam = { modern: [], terminal: [] };
+  Object.entries(all).forEach(([name, t]) => fam[(t.style === 'modern') ? 'modern' : 'terminal'].push([name, t]));
+  [['modern', 'Messaging'], ['terminal', 'Terminal']].forEach(([key, title]) => {
+    if (!fam[key].length) return;
+    const h = el('div', 'fam-title', esc(title));
+    grid.append(h);
+    fam[key].forEach(([name, t]) => {
+      const b = el('button', 'skin' + (state.cfg.theme === name ? ' on' : '') + (t.holo ? ' holo' : ''));
+      const swatch = t.holo
+        ? '<i class="foil"></i><i class="foil"></i><i class="foil"></i><i class="foil"></i><i class="foil"></i>'
+        : [t.bg, t.accent, t.text, t.ok, t.border].map((c) => `<i style="background:${c}"></i>`).join('');
+      b.innerHTML = `<div class="sw">${swatch}</div>
+        <div class="nm">${esc(t.label || name)}</div>
+        <div class="nt">${esc(t.note || 'custom')}</div>`;
+      b.onclick = () => { applyTheme(name); saveCfg({ theme: name }); fillSkins(); };
+      grid.append(b);
+    });
   });
 
   const ui = state.cfg.ui;
@@ -1177,7 +1352,10 @@ function fillSkins() {
   const sw = $('#swatches');
   sw.textContent = '';
   const cur = state.theme;
-  window.CT_TOKENS.forEach(([k, label]) => {
+  const tokens = document.body.dataset.surface === 'modern'
+    ? [...window.CT_TOKENS, ...window.CT_TOKENS_MODERN]
+    : window.CT_TOKENS;
+  tokens.forEach(([k, label]) => {
     const w = el('label', 'swatch');
     w.innerHTML = `<input type="color" value="${cur[k] || '#000000'}"><span>${label}</span>`;
     w.querySelector('input').oninput = (e) => {

@@ -25,7 +25,7 @@ DEFAULTS = {
     "default_model": "default",
     "default_permission_mode": "acceptEdits",
     "default_cwd": os.path.expanduser("~/Desktop"),
-    "theme": "clay",
+    "theme": "nebula",
     "custom_themes": {},
     "ui": {
         "fontSize": 13,

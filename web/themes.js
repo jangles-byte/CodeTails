@@ -1,6 +1,8 @@
 /* CodeTails skins.
-   Every skin is just a bag of CSS custom properties, so a custom one you build
-   in the tuner is a first-class citizen — same shape, saved to config.json. */
+   Every skin is a bag of CSS custom properties plus a `style`, which picks the
+   surface language: `modern` (a messaging app — system type, filled bubbles with
+   tails, iOS cards) or `terminal` (monospace, hairlines, ⏺ and ⎿).
+   A skin you build in the tuner is the same shape, so it is a first-class citizen. */
 
 window.CT_TOKENS = [
   ['bg',        'Background'],
@@ -21,9 +23,98 @@ window.CT_TOKENS = [
   ['user',      'Your text'],
 ];
 
+/* only shown in the colour editor when the current skin is a modern one */
+window.CT_TOKENS_MODERN = [
+  ['sent',      'Sent bubble'],
+  ['sent2',     'Sent bubble ↓'],
+  ['sentText',  'Sent text'],
+  ['recv',      'Reply bubble'],
+  ['chrome',    'Bars & sidebar'],
+];
+
 window.CT_THEMES = {
+  /* ───────────────────────────── modern ───────────────────────────── */
+  holo: {
+    label: 'Hologram', note: '90s foil, spectral flakes', style: 'modern', holo: true,
+    bg: '#07070d', bg2: '#101019', bg3: '#1a1a28',
+    border: '#2e2e44', borderSoft: '#1f1f30',
+    text: '#f3f4ff', dim: '#a6a6c9', faint: '#6d6d92',
+    accent: '#7b5cff', accent2: '#35e8f2',
+    ok: '#3dff9e', warn: '#ffd24a', err: '#ff5d8f',
+    info: '#35e8f2', think: '#c07bff', user: '#ffffff',
+    sent: '#7b5cff', sent2: '#5b3fe0', sentText: '#090912',
+    recv: '#171725', chrome: '#0a0a12',
+  },
+  nebula: {
+    label: 'Deep Field', note: 'a long way from the sun', style: 'modern', space: true,
+    bg: '#05060e', bg2: '#0c0f1d', bg3: '#151a2e',
+    border: '#242c49', borderSoft: '#1a2038',
+    text: '#eef1ff', dim: '#98a1c6', faint: '#616a8f',
+    accent: '#7d8cff', accent2: '#56dfe6',
+    ok: '#4fd6a0', warn: '#ffc766', err: '#ff6b81',
+    info: '#56dfe6', think: '#b48cff', user: '#ffffff',
+    sent: '#4b3fd0', sent2: '#2b2580', sentText: '#f4f5ff',
+    recv: '#131829', chrome: '#080a14',
+  },
+  cobalt: {
+    label: 'Cobalt', note: 'iMessage after dark', style: 'modern',
+    bg: '#000000', bg2: '#1c1c1e', bg3: '#2c2c2e',
+    border: '#3a3a3c', borderSoft: '#2c2c2e',
+    text: '#ffffff', dim: '#98989f', faint: '#636366',
+    accent: '#0a84ff', accent2: '#64d2ff',
+    ok: '#30d158', warn: '#ffd60a', err: '#ff453a',
+    info: '#64d2ff', think: '#bf5af2', user: '#ffffff',
+    sent: '#0b84ff', sent2: '#0a6fd8', sentText: '#ffffff',
+    recv: '#26262a', chrome: '#101012',
+  },
+  nightsky: {
+    label: 'Night Sky', note: 'telegram blue hour', style: 'modern',
+    bg: '#0e1621', bg2: '#17212b', bg3: '#202b36',
+    border: '#2b3a49', borderSoft: '#1d2733',
+    text: '#eff3f6', dim: '#8a9aa9', faint: '#5d7183',
+    accent: '#3390ec', accent2: '#63b3f5',
+    ok: '#4dcb5f', warn: '#e8b339', err: '#ec5f5f',
+    info: '#63b3f5', think: '#9d7ff0', user: '#ffffff',
+    sent: '#2f6ea5', sent2: '#265a87', sentText: '#ffffff',
+    recv: '#1e2a37', chrome: '#17212b',
+  },
+  blurple: {
+    label: 'Blurple', note: 'the one with the servers', style: 'modern',
+    bg: '#1e1f22', bg2: '#2b2d31', bg3: '#383a40',
+    border: '#3f4147', borderSoft: '#33353b',
+    text: '#dbdee1', dim: '#949ba4', faint: '#6d6f78',
+    accent: '#5865f2', accent2: '#8b95f7',
+    ok: '#23a55a', warn: '#f0b132', err: '#f23f43',
+    info: '#00a8fc', think: '#c084fc', user: '#ffffff',
+    sent: '#5865f2', sent2: '#4752c4', sentText: '#ffffff',
+    recv: '#313338', chrome: '#1e1f22',
+  },
+  moss: {
+    label: 'Fern', note: 'quiet green, dark room', style: 'modern',
+    bg: '#0b0f0c', bg2: '#151b16', bg3: '#1e2620',
+    border: '#2c372e', borderSoft: '#1f2921',
+    text: '#e8efe8', dim: '#93a695', faint: '#647167',
+    accent: '#4ec97f', accent2: '#89e5ab',
+    ok: '#4ec97f', warn: '#e3c05c', err: '#ef6f62',
+    info: '#5fc9c0', think: '#a7d888', user: '#ffffff',
+    sent: '#2f8f5b', sent2: '#26744a', sentText: '#ffffff',
+    recv: '#1b241d', chrome: '#0f1410',
+  },
+  daylight: {
+    label: 'Daylight', note: 'bright, on the porch', style: 'modern',
+    bg: '#ffffff', bg2: '#f2f2f7', bg3: '#e9e9ee',
+    border: '#d8d8de', borderSoft: '#e5e5ea',
+    text: '#000000', dim: '#6c6c70', faint: '#a1a1a6',
+    accent: '#007aff', accent2: '#0a84ff',
+    ok: '#28a745', warn: '#c48a00', err: '#e5342a',
+    info: '#007aff', think: '#8e44ec', user: '#ffffff',
+    sent: '#0a84ff', sent2: '#007aff', sentText: '#ffffff',
+    recv: '#e9e9eb', chrome: '#f7f7fa',
+  },
+
+  /* ──────────────────────────── terminal ──────────────────────────── */
   clay: {
-    label: 'Clay', note: 'the default terminal',
+    label: 'Clay', note: 'the terminal look', style: 'terminal',
     bg: '#000000', bg2: '#08080a', bg3: '#101014',
     border: '#26262b', borderSoft: '#181820',
     text: '#e8e6e3', dim: '#8a8a90', faint: '#55555c',
@@ -31,17 +122,8 @@ window.CT_THEMES = {
     ok: '#6cc08a', warn: '#d9a441', err: '#d2564b',
     info: '#6fa8dc', think: '#9b8cd8', user: '#d5d3d0',
   },
-  graphite: {
-    label: 'Graphite', note: 'cold, quiet, precise',
-    bg: '#000000', bg2: '#0a0b0d', bg3: '#111317',
-    border: '#232830', borderSoft: '#161a20',
-    text: '#e6eaef', dim: '#848d99', faint: '#4f5761',
-    accent: '#8fb8dd', accent2: '#b9d4ec',
-    ok: '#79c39b', warn: '#d3b06a', err: '#d1706a',
-    info: '#8fb8dd', think: '#9aa4d8', user: '#cfd6de',
-  },
   phosphor: {
-    label: 'Phosphor', note: 'green screen, 1983',
+    label: 'Phosphor', note: 'green screen, 1983', style: 'terminal',
     bg: '#000300', bg2: '#030d06', bg3: '#06150c',
     border: '#124a28', borderSoft: '#0a2a17',
     text: '#c9f7d8', dim: '#4f9f70', faint: '#2d6446',
@@ -50,7 +132,7 @@ window.CT_THEMES = {
     info: '#5ad9c0', think: '#7fd8a0', user: '#a7edc2',
   },
   amber: {
-    label: 'Amber', note: 'warm CRT glow',
+    label: 'Amber', note: 'warm CRT glow', style: 'terminal',
     bg: '#040200', bg2: '#0d0803', bg3: '#160e05',
     border: '#4a3110', borderSoft: '#2a1c09',
     text: '#ffd7a0', dim: '#b3803c', faint: '#6d4c22',
@@ -58,17 +140,8 @@ window.CT_THEMES = {
     ok: '#c2c04a', warn: '#ffab3d', err: '#ff6a4a',
     info: '#e0b25f', think: '#d19a5c', user: '#f5c98c',
   },
-  iceberg: {
-    label: 'Iceberg', note: 'deep water blue',
-    bg: '#000308', bg2: '#040c15', bg3: '#08131f',
-    border: '#173147', borderSoft: '#0d1f2e',
-    text: '#dce9f6', dim: '#6f8ba6', faint: '#40566c',
-    accent: '#5cc0ff', accent2: '#9bd9ff',
-    ok: '#5fd0b0', warn: '#e0b45f', err: '#ff7a72',
-    info: '#5cc0ff', think: '#8fa8ff', user: '#c6dbef',
-  },
   synth: {
-    label: 'Synth', note: 'neon, after midnight',
+    label: 'Synth', note: 'neon, after midnight', style: 'terminal',
     bg: '#04000a', bg2: '#0b0417', bg3: '#140a24',
     border: '#33165a', borderSoft: '#1e0d36',
     text: '#f1e6ff', dim: '#9a7fc4', faint: '#63498c',
@@ -76,17 +149,8 @@ window.CT_THEMES = {
     ok: '#5df2c8', warn: '#ffcb5f', err: '#ff5f7a',
     info: '#6be7ff', think: '#b18dff', user: '#e2d1f7',
   },
-  moss: {
-    label: 'Moss', note: 'forest floor',
-    bg: '#000200', bg2: '#070c07', bg3: '#0d150d',
-    border: '#26361f', borderSoft: '#161f13',
-    text: '#e3ead9', dim: '#87996f', faint: '#526046',
-    accent: '#9ec96a', accent2: '#c3e29b',
-    ok: '#7fc98a', warn: '#d8bc5f', err: '#d2705f',
-    info: '#7fbfa8', think: '#a9b98a', user: '#cfd9c0',
-  },
   paper: {
-    label: 'Paper', note: 'daylight, on the porch',
+    label: 'Paper', note: 'daylight, monospaced', style: 'terminal',
     bg: '#f6f4f0', bg2: '#fffefb', bg3: '#f0ede7',
     border: '#ddd7cd', borderSoft: '#eae5dc',
     text: '#23201c', dim: '#6c6558', faint: '#9b9384',
