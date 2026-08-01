@@ -92,9 +92,10 @@ Skins are just CSS variables plus a surface style, so one you build in the tuner
 first-class citizen. Twelve ship in the box across two surface languages:
 
 - **Messaging** — system type, filled bubbles with tails, iOS-style tool cards.
-  *Hologram* (90s foil: a procedurally scattered flake field and iridescent bubbles),
-  *Deep Field* (a generated starfield with drifting nebula), *Cobalt*, *Night Sky*,
-  *Blurple*, *Fern*, *Daylight*.
+  *Mono* (black, greys and hairlines, with one pastel foil thread on the top edge,
+  what you just said, and whatever is currently running), *Hologram* (90s foil: a
+  procedurally scattered flake field and iridescent bubbles), *Deep Field* (a generated
+  starfield with drifting nebula), *Cobalt*, *Night Sky*, *Blurple*, *Fern*, *Daylight*.
 - **Terminal** — monospace, hairlines, `⏺` and `⎿`. *Clay*, *Phosphor*, *Amber*,
   *Synth*, *Paper*.
 

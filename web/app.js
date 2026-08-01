@@ -99,6 +99,7 @@ function applyTheme(name, overrides) {
   document.body.dataset.surface = base.style || 'terminal';
   document.body.dataset.holo = base.holo ? '1' : '0';
   document.body.dataset.space = base.space ? '1' : '0';
+  document.body.dataset.thread = base.thread ? '1' : '0';
   paintBackdrop(base);
   const lum = luminance(base.bg || '#000');
   document.body.dataset.light = lum > 0.5 ? '1' : '0';

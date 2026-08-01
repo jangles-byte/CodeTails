@@ -34,6 +34,17 @@ window.CT_TOKENS_MODERN = [
 
 window.CT_THEMES = {
   /* ───────────────────────────── modern ───────────────────────────── */
+  mono: {
+    label: 'Mono', note: 'white on black, one foil thread', style: 'modern', thread: true,
+    bg: '#000000', bg2: '#0d0d0f', bg3: '#141416',
+    border: '#2d2d33', borderSoft: '#1e1e22',
+    text: '#f4f4f5', dim: '#8a8a92', faint: '#5a5a62',
+    accent: '#ffffff', accent2: '#a0f0ff',
+    ok: '#b9ffd8', warn: '#fff3b0', err: '#ff6b6b',
+    info: '#a0f0ff', think: '#b8c0ff', user: '#0a0a0a',
+    sent: '#f4f4f5', sent2: '#ffffff', sentText: '#0a0a0a',
+    recv: '#0d0d0f', chrome: '#000000',
+  },
   holo: {
     label: 'Hologram', note: '90s foil, spectral flakes', style: 'modern', holo: true,
     bg: '#07070d', bg2: '#101019', bg3: '#1a1a28',

@@ -1367,6 +1367,148 @@ body[data-space="1"] .prose code { color: var(--accent2); background: rgba(255, 
 html[data-anim="off"] body[data-space="1"]::before,
 html[data-anim="off"] body[data-space="1"] #stream-wrap::before { animation: none; }
 
+/* ══════════════════════════════════════════════════════════════════════
+   MONO — black, greys, hairlines. One pastel foil thread, used sparingly:
+   the top edge, the wordmark, what you just said, and whatever is live.
+   ══════════════════════════════════════════════════════════════════════ */
+body[data-thread="1"] {
+  --foil: linear-gradient(115deg, #f7c6ff, #b8c0ff, #a0f0ff, #b9ffd8,
+                          #fff3b0, #ffc6f0, #a0f0ff, #f7c6ff);
+}
+@keyframes foil-run { to { background-position: 300% 0; } }
+
+/* the thread across the very top */
+body[data-thread="1"]::before {
+  content: ""; position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 100;
+  pointer-events: none;
+  background: var(--foil); background-size: 300% 100%;
+  animation: foil-run 6s linear infinite;
+}
+
+/* flat panels — no glass anywhere in this one */
+body[data-thread="1"] #topbar, body[data-thread="1"] #composer,
+body[data-thread="1"] #drawer, body[data-thread="1"] #rail {
+  background: var(--chrome);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  border-color: var(--borderSoft);
+}
+body[data-thread="1"] #topbar { border-bottom: 1px solid var(--borderSoft); }
+
+/* what you said: foil, black text — the same weight as an active chip in AIshi */
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-user .body {
+  background: var(--foil); background-size: 300% 100%;
+  animation: foil-run 6s linear infinite;
+  color: #0a0a0a; font-weight: 500;
+  border-radius: 14px; box-shadow: none; text-shadow: none;
+}
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-user.tail .body::before,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-user .body::before,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-user.tail .body::after,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-user .body::after { display: none; }
+
+/* replies: flat panel, hairline, small radius */
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-assistant .prose,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-assistant.tail .prose {
+  background: var(--bg2); border: 1px solid var(--borderSoft);
+  border-radius: 14px; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-assistant.tail .prose::before,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-assistant.tail .prose::after { display: none; }
+
+/* avatar: a hairline ring with a foil star in it */
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .msg-assistant.head::before,
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .typing::before {
+  background: var(--bg2);
+  box-shadow: inset 0 0 0 1px var(--border);
+  background-image: var(--foil); background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: foil-run 6s linear infinite;
+}
+
+/* tool cards: panel, hairline, 10px — and the icon is a bordered square, not a tint */
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .tool {
+  background: var(--bg2); border: 1px solid var(--borderSoft);
+  border-radius: 10px; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+body[data-thread="1"] .tool .bullet {
+  background: transparent !important; border: 1px solid var(--border);
+  border-radius: 5px; color: var(--dim) !important;
+}
+body[data-thread="1"] .tool.err .bullet { border-color: var(--err); color: var(--err) !important; }
+body[data-thread="1"] .tool-body { background: var(--bg); }
+body[data-thread="1"] .tool-name { font-weight: 600; }
+body[data-thread="1"] .tool-meta { font-variant-numeric: tabular-nums; }
+
+/* whatever is live wears the foil on its edge */
+body[data-thread="1"][data-surface="modern"][data-layout="messages"] .tool.pending,
+body[data-thread="1"] .row.active,
+body[data-thread="1"] .prompt-box:focus-within {
+  border: 1px solid transparent;
+  background-image: linear-gradient(var(--bg2), var(--bg2)), var(--foil);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-size: auto, 300% 100%;
+  animation: foil-run 6s linear infinite;
+}
+body[data-thread="1"] .tool.pending .bullet { border-color: transparent; }
+body[data-thread="1"] .row.active .name { color: #fff; font-weight: 600; }
+
+/* the few controls that act, in foil with black type */
+body[data-thread="1"] .new-session-btn, body[data-thread="1"] .primary,
+body[data-thread="1"] .tiny-btn.go, body[data-thread="1"].has-text .send-btn {
+  background: var(--foil); background-size: 300% 100%;
+  animation: foil-run 6s linear infinite;
+  color: #0a0a0a; font-weight: 700; border: 0; box-shadow: none;
+}
+body[data-thread="1"] .send-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--dim);
+  opacity: 1; transform: scale(.9); filter: none;
+}
+body[data-thread="1"].has-text .send-btn { transform: scale(1); border-color: transparent; }
+body[data-thread="1"] .wordmark, body[data-thread="1"] .welcome h1,
+body[data-thread="1"] #runline .spin {
+  background: var(--foil); background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: foil-run 6s linear infinite;
+}
+
+/* everything else stays grey and quiet */
+body[data-thread="1"] .chip {
+  background: transparent; border: 1px solid var(--border); color: var(--dim);
+  border-radius: 14px;
+}
+body[data-thread="1"] button.chip:hover { color: #fff; border-color: #fff; }
+body[data-thread="1"] .chip.mode-bypass { color: var(--err); border-color: var(--err); }
+body[data-thread="1"] .qchip {
+  background: transparent; border: 1px solid var(--borderSoft); color: var(--dim);
+}
+body[data-thread="1"] .qchip:hover { color: #fff; border-color: var(--border); }
+body[data-thread="1"] .prompt-box {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+}
+body[data-thread="1"] .welcome, body[data-thread="1"] .sheet-card,
+body[data-thread="1"] .palette-card {
+  background: var(--bg2); border: 1px solid var(--borderSoft); border-radius: 10px;
+  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+}
+body[data-thread="1"] .row { border-radius: 6px; }
+body[data-thread="1"] .status-dot.idle { background: #fff; box-shadow: none; }
+body[data-thread="1"] .turn-result, body[data-thread="1"] .chip.cost {
+  font-variant-numeric: tabular-nums;
+}
+body[data-thread="1"] .prose code {
+  color: var(--accent2); background: var(--bg3); border: 1px solid var(--borderSoft);
+}
+body[data-thread="1"] .field input, body[data-thread="1"] .field select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+}
+html[data-anim="off"] body[data-thread="1"] * { animation: none !important; }
+
 /* ── animation ───────────────────────────────────────────────────────── */
 @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 @keyframes unfold { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
