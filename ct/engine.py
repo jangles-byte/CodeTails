@@ -72,7 +72,7 @@ class Session:
     def __init__(self, manager: "SessionManager", cwd: str, model: str = "default",
                  permission_mode: str = "acceptEdits", resume: str | None = None,
                  allowed_tools: list[str] | None = None, effort: str = "default",
-                 title: str | None = None):
+                 title: str | None = None, fork: bool = False):
         self.manager = manager
         self.id = uuid.uuid4().hex[:12]
         self.cwd = os.path.abspath(os.path.expanduser(cwd))
@@ -82,6 +82,9 @@ class Session:
         self.allowed_tools = list(allowed_tools or [])
         self.claude_session_id = resume or str(uuid.uuid4())
         self._resume_next = bool(resume)
+        # fork once, on the first resume — after that this is our own session
+        self._fork_next = bool(resume and fork)
+        self.forked_from = resume if self._fork_next else None
         self.title = title or os.path.basename(self.cwd) or self.cwd
         self.created = time.time()
         self.last_activity = time.time()
@@ -119,6 +122,8 @@ class Session:
                 "--verbose", "--include-partial-messages"]
         if self._resume_next:
             argv += ["--resume", self.claude_session_id]
+            if self._fork_next:
+                argv.append("--fork-session")     # copy the history, take a new id
         else:
             argv += ["--session-id", self.claude_session_id]
         if self.model and self.model != "default":
@@ -148,6 +153,9 @@ class Session:
             return
 
         self._resume_next = True     # every future respawn resumes
+        # NB: _fork_next stays set until `system/init` hands us the forked id.
+        # Clearing it here would make a respawn-before-first-turn resume the
+        # original session in place — the exact collision the fork avoids.
         self.status = "idle"
         threading.Thread(target=self._pump_stdout, daemon=True).start()
         threading.Thread(target=self._pump_stderr, daemon=True).start()
@@ -249,6 +257,7 @@ class Session:
             sub = obj.get("subtype")
             if sub == "init":
                 self.claude_session_id = obj.get("session_id") or self.claude_session_id
+                self._fork_next = False        # we now own a distinct id
                 self.tools = obj.get("tools") or self.tools
                 cmds = obj.get("slash_commands") or []
                 if cmds and not self.slash_commands:
@@ -439,6 +448,7 @@ class Session:
         return {
             "id": self.id,
             "claude_session_id": self.claude_session_id,
+            "forked_from": self.forked_from,
             "cwd": self.cwd,
             "title": self.title,
             "model": self.model,

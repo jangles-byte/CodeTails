@@ -510,19 +510,51 @@ function welcome() {
 async function createSession(opts) {
   closeSheet();
   try {
-    const { session } = await post('/api/sessions', {
+    const r = await post('/api/sessions', {
       cwd: opts.cwd,
       model: opts.model || state.cfg.default_model,
       permission_mode: opts.permission_mode || state.cfg.default_permission_mode,
       effort: opts.effort || 'default',
       resume: opts.resume || null,
+      fork: !!opts.fork,
+      force: !!opts.force,
       title: opts.title || null,
     });
+    if (r.conflict) return conflictCard(r.conflict, opts);
+    const session = r.session;
     await saveCfg({ default_cwd: session.cwd });
     attachSession(session);
     refreshLive();
-    toast(opts.resume ? 'session resumed' : 'session started', 'ok');
+    toast(opts.fork ? 'forked into a new session'
+      : opts.resume ? 'session resumed' : 'session started', 'ok');
   } catch (e) { toast(e.message, 'err'); }
+}
+
+/* Two writers on one transcript interleaves it, so when something else already
+   has this session open we ask instead of barging in. */
+function conflictCard(conflict, opts) {
+  if (conflict.kind === 'codetails') {
+    toast('already open here', 'ok');
+    return attachSession(conflict.session);
+  }
+  const h = conflict.holder || {};
+  const where = h.kind === 'background' ? 'a background agent'
+    : h.name ? `another window (${h.name})` : 'another Claude Code window';
+  const n = el('div', 'blk perm-card');
+  n.innerHTML = `<h4>That session is open in ${esc(where)}</h4>
+    <p style="margin:4px 0 0;color:var(--dim);font-size:11.5px;line-height:1.55">
+      Resuming it here too would have both of them writing the same transcript.
+      Forking copies the history into a new session and leaves the original alone.</p>
+    <div class="perm-actions">
+      <button class="primary" data-fork>Fork a copy</button>
+      <button class="ghost" data-force>Take it over</button>
+      <button class="ghost" data-x>Cancel</button>
+    </div>`;
+  push(n);
+  autoScroll();
+  n.querySelector('[data-fork]').onclick = () => { n.remove(); createSession({ ...opts, fork: true }); };
+  n.querySelector('[data-force]').onclick = () => { n.remove(); createSession({ ...opts, force: true }); };
+  n.querySelector('[data-x]').onclick = () => n.remove();
 }
 
 function attachSession(meta) {

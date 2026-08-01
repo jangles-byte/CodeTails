@@ -56,6 +56,18 @@ def agents(include_done: bool = True, max_age: float = 5.0) -> list[dict]:
     return out
 
 
+def session_holder(session_id: str) -> dict | None:
+    """Is some other surface — the desktop app, a terminal, a background agent —
+    holding this session open right now? Two writers on one transcript is how
+    history gets interleaved, so callers use this to offer a fork instead."""
+    if not session_id:
+        return None
+    for a in agents(include_done=False, max_age=2.0):
+        if a.get("sessionId") == session_id and a.get("state") != "done":
+            return a
+    return None
+
+
 # --------------------------------------------------------------------------- ports
 _SKIP_PROCS = {"rapportd", "ControlCe", "IPNExtens", "sharingd", "AirPlayXPC"}
 _LSOF = re.compile(r"^(?P<cmd>\S+)\s+(?P<pid>\d+)\s.*?(?P<addr>\S+):(?P<port>\d+)\s+\(LISTEN\)")

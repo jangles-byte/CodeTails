@@ -281,13 +281,26 @@ class Handler(BaseHTTPRequestHandler):
             cwd = body.get("cwd") or config.load()["default_cwd"]
             if not os.path.isdir(os.path.expanduser(cwd)):
                 return self._json({"error": f"no such directory: {cwd}"}, 400)
+
+            resume = body.get("resume") or None
+            if resume and not body.get("fork") and not body.get("force"):
+                # already open in CodeTails? just point them at it
+                for s in MANAGER.sessions.values():
+                    if s.claude_session_id == resume and s.status != "closed":
+                        return self._json({"conflict": {"kind": "codetails",
+                                                        "session": s.meta()}})
+                holder = live.session_holder(resume)
+                if holder:
+                    return self._json({"conflict": {"kind": "elsewhere", "holder": holder}})
+
             try:
                 s = MANAGER.create(
                     cwd=cwd,
                     model=body.get("model") or "default",
                     permission_mode=body.get("permission_mode") or "acceptEdits",
                     effort=body.get("effort") or "default",
-                    resume=body.get("resume") or None,
+                    resume=resume,
+                    fork=bool(body.get("fork")),
                     title=body.get("title") or None,
                 )
             except Exception as exc:
