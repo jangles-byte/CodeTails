@@ -75,6 +75,21 @@ there is no TLS on that path.
 On iOS: open the link in Safari → Share → *Add to Home Screen*. It launches full-screen
 with its own icon.
 
+## Activity and local servers
+
+The `◎` panel shows what else is running on the machine, straight from
+`claude agents --json` — background agents with their state, and the sessions your
+desktop app has open. Tap one to read its transcript and resume it from the phone.
+
+Below that, every local server that is listening. Dev servers usually bind `127.0.0.1`,
+which your phone cannot reach, so **expose** opens a raw TCP relay bound to your
+tailnet address only. `http://<tailnet-ip>:3000` then works from the couch, websockets
+and hot reload included — it relays bytes rather than proxying HTTP, so nothing gets
+rewritten. Relays are in-memory and die with the server.
+
+> An exposed port is **unauthenticated**. It is only on your tailnet, never the open
+> internet, but anyone on that tailnet can load it. Stop it from the same panel.
+
 ## Permissions
 
 Headless Claude Code cannot pop its own approval dialog, so it auto-denies anything the

@@ -16,6 +16,7 @@ const state = {
   es: null,
   blocks: new Map(),
   commands: [],
+  activity: null,
   projects: [],
   openProject: null,
   stick: true,
@@ -280,6 +281,8 @@ async function boot() {
   else welcome();
 
   setInterval(refreshLive, 6000);
+  refreshActivity();
+  setInterval(refreshActivity, 15000);
   setInterval(tickRun, 1000);
 }
 
@@ -370,6 +373,118 @@ async function refreshLive() {
     const mine = sessions.find((s) => s.id === state.session?.id);
     if (mine) { state.session = mine; paintTopbar(); }
   } catch (_) { netStatus(false); }
+}
+
+/* ─────────────────────── what else is running here ──────────────────────
+   Background agents and the sessions your desktop app has open all live in the
+   same place Claude Code keeps everything, so they show up here too. */
+const AGENT_STATE = { blocked: 'needs you', running: 'working', done: 'done', error: 'failed' };
+
+async function refreshActivity() {
+  try {
+    const cwd = state.session?.cwd || state.cfg?.default_cwd || '';
+    state.activity = await api('/api/activity?cwd=' + encodeURIComponent(cwd));
+  } catch (_) { return; }
+  renderAgents();
+  if (!$('#sheet-activity').hidden) fillActivity();
+}
+
+function renderAgents() {
+  const list = (state.activity?.agents || []).filter((a) => a.state !== 'done');
+  const g = $('#agent-group'), box = $('#agent-list');
+  g.hidden = !list.length;
+  $('#agent-count').textContent = list.length;
+  box.textContent = '';
+  list.slice(0, 12).forEach((a) => {
+    const r = el('button', 'row');
+    const label = AGENT_STATE[a.state] || a.state || (a.kind === 'interactive' ? 'open' : '');
+    const cls = a.state === 'blocked' ? 'busy' : a.state === 'error' ? 'dead' : '';
+    r.innerHTML = `<div class="r1">
+        <span class="live-dot ${cls}"></span>
+        <span class="name">${esc(a.name || (a.sessionId || '').slice(0, 8) || 'session')}</span>
+        <span class="pill">${a.kind === 'background' ? 'bg' : 'app'}</span>
+      </div>
+      <div class="r2">${esc(rel(a.cwd || ''))}${label ? ' · ' + esc(label) : ''}</div>`;
+    r.onclick = () => openAgent(a);
+    box.append(r);
+  });
+}
+
+/* an agent is just a session id, so its transcript opens like any other */
+function openAgent(a) {
+  if (!a.sessionId) return toast('no transcript for that one', 'err');
+  openHistory({ id: a.sessionId, title: a.name || 'background agent',
+                mtime: (a.startedAt || Date.now()) / 1000, cwd: a.cwd, size: 0 },
+              { name: (a.cwd || '').split('/').filter(Boolean).pop() });
+}
+
+function fillActivity() {
+  const d = state.activity || {};
+  const box = $('#activity-body');
+  const agents = d.agents || [];
+  const ports = (d.ports || []).filter((p) => !p.self);
+
+  const agentRows = agents.length ? agents.map((a) => {
+    const label = AGENT_STATE[a.state] || a.state || (a.kind === 'interactive' ? 'open' : '');
+    return `<button class="act-row" data-sid="${esc(a.sessionId || '')}">
+      <span class="act-kind ${a.kind === 'background' ? 'bg' : 'app'}">${a.kind === 'background' ? 'bg' : 'app'}</span>
+      <span class="act-main">
+        <b>${esc(a.name || (a.sessionId || '').slice(0, 8) || 'session')}</b>
+        <small>${esc(rel(a.cwd || ''))}</small>
+      </span>
+      <span class="act-state ${esc(a.state || '')}">${esc(label)}</span>
+    </button>`;
+  }).join('') : '<p class="muted">Nothing else running right now.</p>';
+
+  const portRows = ports.length ? ports.map((p) => {
+    const open = p.reachable || p.relayed;
+    const action = p.relayed
+      ? `<button class="tiny-btn" data-relay="${p.port}" data-stop="1">stop</button>`
+      : p.loopback_only
+        ? `<button class="tiny-btn go" data-relay="${p.port}">expose</button>`
+        : '';
+    return `<div class="act-row static">
+      <span class="act-kind port">:${p.port}</span>
+      <span class="act-main">
+        <b>${esc(p.proc)}</b>
+        <small>${p.loopback_only ? 'localhost only' : 'all interfaces'}${p.relayed ? ' · relayed' : ''}</small>
+      </span>
+      ${open && p.url ? `<a class="tiny-btn" href="${esc(p.url)}" target="_blank" rel="noopener">open</a>` : ''}
+      ${action}
+    </div>`;
+  }).join('') : '<p class="muted">No local servers listening.</p>';
+
+  const launch = (d.launch || []).filter((c) => c.port).map((c) =>
+    `<span class="qchip">${esc(c.name)} :${c.port}</span>`).join('');
+
+  box.innerHTML = `
+    <h3 class="sub">Running on this machine</h3>
+    <div class="act-list">${agentRows}</div>
+    <h3 class="sub">Local servers</h3>
+    <div class="act-list">${portRows}</div>
+    ${launch ? `<h3 class="sub">This project can start</h3><div class="quick">${launch}</div>` : ''}
+    <p class="muted">Exposing a port binds it to your tailnet address only${d.tailnet ? ` (${esc(d.tailnet)})` : ''} —
+      never the open internet — but it is unauthenticated, so anyone on your tailnet can load it.</p>`;
+
+  $$('.act-row[data-sid]', box).forEach((b) => {
+    b.onclick = () => {
+      const a = agents.find((x) => x.sessionId === b.dataset.sid);
+      closeSheet();
+      if (a) openAgent(a);
+    };
+  });
+  $$('[data-relay]', box).forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      b.disabled = true;
+      try {
+        const r = await post('/api/relay', { port: +b.dataset.relay, stop: !!b.dataset.stop });
+        if (r.error) throw new Error(r.error);
+        toast(b.dataset.stop ? 'port closed' : 'reachable at ' + r.url, 'ok');
+      } catch (err) { toast(err.message, 'err'); }
+      await refreshActivity();
+    };
+  });
 }
 
 /* ─────────────────────────── session lifecycle ───────────────────────── */
@@ -1219,6 +1334,7 @@ function openSheet(name) {
   s.hidden = false;
   document.body.classList.add('scrim');
   if (name === 'new') fillNew();
+  if (name === 'activity') { fillActivity(); refreshActivity(); }
   if (name === 'share') fillShare();
   if (name === 'skins') fillSkins();
   if (name === 'settings') fillSettings();
@@ -1499,6 +1615,8 @@ document.addEventListener('click', (e) => {
       skins: () => openSheet('skins'),
       settings: () => openSheet('settings'),
       palette: openPalette,
+      activity: () => openSheet('activity'),
+      'refresh-activity': refreshActivity,
       send: () => send(),
       stop,
       browse: () => browse(),

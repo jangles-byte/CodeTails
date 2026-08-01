@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ct import config, engine, net, projects, qr  # noqa: E402
+from ct import config, engine, live, net, projects, qr  # noqa: E402
 
 MANAGER = engine.SessionManager()
 START_TIME = time.time()
@@ -243,6 +243,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(projects.git_info(qs.get("cwd", [""])[0]))
         if path == "/api/sessions":
             return self._json({"sessions": MANAGER.list()})
+        if path == "/api/activity":
+            return self._json({
+                "agents": live.agents(),
+                "ports": live.local_ports(),
+                "relays": live.relay_list(),
+                "launch": live.launch_configs(qs.get("cwd", [""])[0]),
+                "tailnet": net.tailnet().get("ip"),
+            })
         if path == "/api/qr":
             data = qs.get("d", [""])[0]
             try:
@@ -285,6 +293,18 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 return self._json({"error": str(exc)}, 500)
             return self._json({"session": s.meta()})
+
+        if path == "/api/relay":
+            try:
+                port = int(body.get("port"))
+            except (TypeError, ValueError):
+                return self._json({"error": "bad port"}, 400)
+            if port == config.load().get("port"):
+                return self._json({"error": "that is CodeTails itself"}, 400)
+            if body.get("stop"):
+                return self._json(live.relay_stop(port))
+            result = live.relay_start(port)
+            return self._json(result, 200 if result.get("ok") else 400)
 
         if path == "/api/config":
             cfg = config.update(body or {})
@@ -495,6 +515,7 @@ def main() -> None:
 
     def shutdown(*_):
         print("\n   \033[2mclosing sessions…\033[0m")
+        live.relay_stop_all()
         MANAGER.close_all()
         threading.Thread(target=httpd.shutdown, daemon=True).start()
 

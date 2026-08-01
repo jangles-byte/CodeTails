@@ -25,6 +25,7 @@
     </button>
     <button class="rail-btn" data-act="new" title="New session (⌘N)"><span class="glyph">＋</span></button>
     <button class="rail-btn" data-act="palette" title="Commands (⌘K)"><span class="glyph">/</span></button>
+    <button class="rail-btn" data-act="activity" title="Activity &amp; ports"><span class="glyph">◎</span></button>
     <div class="rail-spacer"></div>
     <button class="rail-btn" data-act="share" title="Reach from anywhere"><span class="glyph">⌘</span></button>
     <button class="rail-btn" data-act="skins" title="Skins (⌘J)"><span class="glyph">◐</span></button>
@@ -47,6 +48,11 @@
       <section class="group" id="live-group" hidden>
         <h3 class="group-title">Live <span class="count" id="live-count">0</span></h3>
         <div id="live-list" class="list"></div>
+      </section>
+
+      <section class="group" id="agent-group" hidden>
+        <h3 class="group-title">Running elsewhere <span class="count" id="agent-count">0</span></h3>
+        <div id="agent-list" class="list"></div>
       </section>
 
       <section class="group">
@@ -142,6 +148,15 @@
         <div class="recent" id="new-recent"></div>
       </div>
       <footer><button class="ghost" data-close>Cancel</button><button class="primary" data-act="create">Start session</button></footer>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet-activity" hidden>
+    <div class="sheet-card wide">
+      <header><h2>Activity &amp; ports</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="sheet-body" id="activity-body"></div>
+      <footer><button class="ghost" data-act="refresh-activity">Refresh</button>
+        <button class="primary" data-close>Done</button></footer>
     </div>
   </div>
 

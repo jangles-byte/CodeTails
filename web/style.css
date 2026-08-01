@@ -612,6 +612,33 @@ body.scrim #scrim { opacity: 1; pointer-events: auto; }
 .share-urls .u.best .val { color: var(--accent); }
 .muted { color: var(--faint); font-size: 11px; margin: 13px 0 0; line-height: 1.6; text-align: left; }
 
+/* activity + ports */
+.act-list { display: flex; flex-direction: column; gap: 6px; }
+.act-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 11px; border: 1px solid var(--borderSoft); border-radius: 10px;
+  background: var(--bg); color: var(--dim);
+  transition: border-color .16s, background .16s;
+}
+button.act-row:hover { border-color: var(--border); background: var(--bg3); }
+.act-row.static { cursor: default; }
+.act-kind {
+  flex: 0 0 auto; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+  border: 1px solid var(--borderSoft); border-radius: 5px; padding: 2px 6px;
+  color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.act-kind.bg { color: var(--accent2); border-color: color-mix(in srgb, var(--accent2) 40%, transparent); }
+.act-kind.port { color: var(--dim); }
+.act-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.act-main b { color: var(--text); font-weight: 600; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; display: block; }
+.act-main small { color: var(--faint); font-size: 10.5px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; display: block; }
+.act-state { flex: 0 0 auto; font-size: 10.5px; color: var(--faint); }
+.act-state.blocked { color: var(--warn); }
+.act-state.error { color: var(--err); }
+.act-row a.tiny-btn { text-decoration: none; }
+
 .skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 9px; }
 .fam-title {
   grid-column: 1 / -1; font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
