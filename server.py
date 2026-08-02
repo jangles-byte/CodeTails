@@ -31,6 +31,7 @@ from ct import config, engine, live, net, projects, qr  # noqa: E402
 
 MANAGER = engine.SessionManager()
 START_TIME = time.time()
+RUNTIME = {"port": None}          # the port we actually bound this run
 
 # A live CodeTails link is equivalent to a shell on this machine, so the door is
 # narrow on purpose: tailnet or loopback only, token always, and browser-origin
@@ -357,9 +358,11 @@ class Handler(BaseHTTPRequestHandler):
     # ---------------------------------------------------------------- pieces
     def _boot(self) -> dict:
         cfg = config.load()
+        port = RUNTIME["port"] or cfg["port"]
+        cfg = dict(cfg, port=port)
         return {
             "config": _public_config(cfg),
-            "endpoints": net.endpoints(cfg["port"], cfg["token"]),
+            "endpoints": net.endpoints(port, cfg["token"]),
             "projects": projects.list_projects(),
             "sessions": MANAGER.list(),
             "models": engine.MODELS,
@@ -484,11 +487,31 @@ def main() -> None:
         print("  Install it with:  npm install -g @anthropic-ai/claude-code")
         sys.exit(1)
 
+    # Already up? Point at it rather than racing it onto another port.
+    running = net.codetails_on(args.port)
+    if running:
+        print(BANNER)
+        print("   \033[2mCodeTails is already running on this machine.\033[0m")
+        ends0 = net.endpoints(args.port, cfg["token"])
+        print(f"   \033[38;5;173mopen    \033[0m {ends0.get('best')}")
+        print("\n   \033[2m(close that one first if you want a fresh start)\033[0m\n")
+        if cfg.get("open_browser") and not args.no_open:
+            webbrowser.open(ends0["local"])
+        return
+
     httpd = None
     port = args.port
     for attempt in range(12):
+        # A port is only useful if the tailnet address is free too — Tailscale
+        # `serve` can own <tailnet-ip>:<port> while 0.0.0.0:<port> still binds
+        # fine, and then the phone reaches Tailscale's proxy instead of us.
+        if not net.tailnet_port_free(port):
+            print(f"   \033[2mport {port} is claimed on the tailnet, trying {port + 1}…\033[0m")
+            port += 1
+            continue
         try:
             httpd = Server((args.host, port), Handler)
+            net.note_ip_usable(True)
             break
         except OSError:
             print(f"   \033[2mport {port} busy, trying {port + 1}…\033[0m")
@@ -497,8 +520,11 @@ def main() -> None:
         print("\033[38;5;131m  No free port found near "
               f"{args.port}. Close something or pass --port.\033[0m")
         sys.exit(1)
+    # A fallback port is this run's accident, not a new preference — writing it
+    # back is what makes the wrong port stick across launches.
+    RUNTIME["port"] = port
     if port != cfg["port"]:
-        cfg = config.update({"port": port})
+        print(f"   \033[2m(preference stays :{cfg['port']}; this run is on :{port})\033[0m")
 
     ends = net.endpoints(port, cfg["token"])
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import socket
@@ -87,6 +88,49 @@ def lan_ip() -> str | None:
         return None
 
 
+_IP_USABLE: bool | None = None
+
+
+def note_ip_usable(value: bool) -> None:
+    """Remember what the pre-bind probe found, so `endpoints` stays honest."""
+    global _IP_USABLE
+    _IP_USABLE = value
+
+
+def tailnet_port_free(port: int) -> bool:
+    """Can we own <tailnet-ip>:<port>?
+
+    Binding 0.0.0.0 succeeds even when something already holds the specific
+    tailnet address — `tailscale serve` does exactly that — and then the phone
+    talks to *that* instead of us. So test the address we actually advertise.
+    """
+    ip = tailnet().get("ip")
+    if not ip:
+        return True                       # no tailnet, nothing to collide with
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((ip, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def codetails_on(port: int) -> bool:
+    """Is a CodeTails already answering on this port?"""
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=1.5)
+        conn.request("GET", "/api/health")
+        r = conn.getresponse()
+        body = r.read(200)
+        conn.close()
+        return r.status == 200 and b'"ok"' in body
+    except Exception:
+        return False
+
+
 def endpoints(port: int, token: str) -> dict:
     ts = tailnet()
     q = f"/?t={token}"
@@ -105,5 +149,15 @@ def endpoints(port: int, token: str) -> dict:
         out["tailnet_url"] = f"http://{ts['ip']}:{port}{q}"
     if ts.get("dns"):
         out["tailnet_dns_url"] = f"http://{ts['dns']}:{port}{q}"
-    out["best"] = out["tailnet_url"] or out["lan"] or out["local"]
+
+    # If something else owns <tailnet-ip>:<port> (a `tailscale serve` handler,
+    # say) the IP URL reaches that instead of us and 404s, while the MagicDNS
+    # name it is configured for still works. Advertise the one that lands here.
+    # Once we are bound, probing our own port would answer "taken", so main()
+    # records what it found before binding.
+    ip_usable = (_IP_USABLE if _IP_USABLE is not None
+                 else (tailnet_port_free(port) if ts.get("ip") else False))
+    out["ip_hijacked"] = bool(ts.get("ip")) and not ip_usable
+    out["best"] = ((out["tailnet_dns_url"] if out["ip_hijacked"] else None)
+                   or out["tailnet_url"] or out["lan"] or out["local"])
     return out
