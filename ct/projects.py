@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import time
 import time
 
 CLAUDE_HOME = os.path.expanduser("~/.claude")
@@ -245,6 +247,45 @@ def transcript_events(path: str, max_events: int = 4000) -> list[dict]:
                 emit({"t": "notice", "text": f"transcript truncated at {max_events} events"})
                 break
     return events
+
+
+def trash_session(session_id: str) -> dict:
+    """Delete a stored conversation — into the Trash, not into thin air.
+
+    These transcripts are the only copy of the work, so we move them where you
+    can still get them back rather than unlinking.
+    """
+    path = find_transcript(session_id)
+    if not path:
+        return {"ok": False, "error": "no transcript with that id"}
+    root = os.path.abspath(PROJECTS_DIR) + os.sep
+    if not os.path.abspath(path).startswith(root):
+        return {"ok": False, "error": "refusing to touch anything outside the project store"}
+
+    meta = session_meta(path)
+    trash = os.path.expanduser("~/.Trash")
+    try:
+        os.makedirs(trash, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        dest = os.path.join(trash, f"codetails-{session_id[:8]}-{stamp}.jsonl")
+        n = 1
+        while os.path.exists(dest):
+            dest = os.path.join(trash, f"codetails-{session_id[:8]}-{stamp}-{n}.jsonl")
+            n += 1
+        shutil.move(path, dest)
+    except OSError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    # the sidecar directory Claude Code keeps beside some sessions
+    side = os.path.join(os.path.dirname(path), session_id)
+    if os.path.isdir(side):
+        try:
+            shutil.move(side, os.path.join(trash, f"codetails-{session_id[:8]}-{stamp}-dir"))
+        except OSError:
+            pass
+
+    _meta_cache.pop(path, None)
+    return {"ok": True, "trashed": dest, "title": meta.get("title")}
 
 
 def _flatten(content) -> str:

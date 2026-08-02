@@ -593,10 +593,14 @@ async function openHistory(s, project) {
   banner.innerHTML = `<h1><span class="spark">✻</span> ${esc(s.title)}</h1>
     <p><span class="k">cwd</span> ${esc(rel(s.cwd || project?.cwd || ''))}</p>
     <p><span class="k">last active</span> ${ago(s.mtime)} ago · <span class="k">id</span> ${esc(s.id.slice(0, 8))}</p>
-    <div class="tips"><button data-act="resume">↻ resume this session</button></div>`;
+    <div class="tips">
+      <button data-act="resume">↻ resume this session</button>
+      <button data-act="del">delete</button>
+    </div>`;
   $('#stream').append(banner);
   banner.querySelector('[data-act=resume]').onclick =
     () => createSession({ cwd: s.cwd || project?.cwd, resume: s.id, title: s.title });
+  banner.querySelector('[data-act=del]').onclick = (e) => confirmDelete(s, e.target);
 
   try {
     const h = await api('/api/history?id=' + encodeURIComponent(s.id));
@@ -605,6 +609,32 @@ async function openHistory(s, project) {
     scrollBottom(true);
   } catch (e) { addNotice('could not load transcript: ' + e.message, 'err'); }
   paintTopbar();
+}
+
+/* Deleting a transcript is the one irreversible thing in here, so it asks once
+   and then moves the file to the Trash rather than unlinking it. */
+function confirmDelete(s, btn) {
+  if (btn.dataset.armed) return doDelete(s);
+  btn.dataset.armed = '1';
+  btn.textContent = 'really delete?';
+  btn.style.color = 'var(--err)';
+  setTimeout(() => {
+    if (!btn.isConnected) return;
+    delete btn.dataset.armed;
+    btn.textContent = 'delete';
+    btn.style.color = '';
+  }, 4000);
+}
+
+async function doDelete(s) {
+  try {
+    const r = await post('/api/session-delete', { id: s.id });
+    if (r.error) throw new Error(r.error);
+    toast('moved to Trash', 'ok');
+    state.projects = (await api('/api/projects')).projects;
+    renderProjects();
+    welcome();
+  } catch (e) { toast(e.message, 'err'); }
 }
 
 function clearStream() {
@@ -819,6 +849,7 @@ function setTextBlock(ev) {
   rec.prose.innerHTML = md(ev.text);
   rec.prose.classList.remove('streaming');
   wireCode(rec.prose);
+  maybeServeChip(ev.text);
 }
 
 function thinkBlock(ev) {
@@ -943,6 +974,57 @@ function paintToolInput(rec) {
 
 function openTool(rec) { rec.open = true; rec.body.classList.remove('hidden'); }
 
+/* Claude says "running on http://localhost:5173" — useless on a phone. Find
+   those, rewrite them to the tailnet host, and offer to open them. */
+const LOCAL_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::(\d{2,5}))?(\/\S*)?/gi;
+
+function localLinks(text) {
+  const out = new Map();
+  for (const m of String(text || '').matchAll(LOCAL_URL)) {
+    const port = m[1] ? +m[1] : 80;
+    if (port === (state.cfg?.port || 8790)) continue;      // that's us
+    out.set(port, (m[2] || '/').replace(/[.,;)]+$/, ''));
+  }
+  return [...out.entries()].map(([port, p]) => ({ port, path: p }));
+}
+
+function serveChip(links) {
+  const host = state.activity?.tailnet;
+  if (!host || !links.length) return null;
+  const row = el('div', 'blk serve-row');
+  row.innerHTML = links.map((l) =>
+    `<button class="tiny-btn go" data-port="${l.port}" data-path="${esc(l.path)}">open :${l.port}</button>`
+  ).join('');
+  row.querySelectorAll('[data-port]').forEach((b) => {
+    b.onclick = async () => {
+      const port = +b.dataset.port;
+      const known = (state.activity?.ports || []).find((p) => p.port === port);
+      if (known && known.loopback_only && !known.relayed) {
+        b.textContent = 'exposing…';
+        try {
+          const r = await post('/api/relay', { port });
+          if (r.error) throw new Error(r.error);
+          await refreshActivity();
+        } catch (e) { toast(e.message, 'err'); b.textContent = `open :${port}`; return; }
+      }
+      b.textContent = `open :${port}`;
+      window.open(`http://${host}:${port}${b.dataset.path}`, '_blank', 'noopener');
+    };
+  });
+  return row;
+}
+
+function maybeServeChip(text) {
+  const links = localLinks(text);
+  if (!links.length) return;
+  const key = 'serve:' + links.map((l) => l.port).join(',');
+  if (state.blocks.has(key)) return;
+  const row = serveChip(links);
+  if (!row) return;
+  state.blocks.set(key, { node: row });
+  push(row);
+}
+
 function finishTool(ev) {
   const rec = state.blocks.get('tool:' + ev.id) || upsertTool({ id: ev.id, name: '?', input: {} });
   rec.node.classList.remove('pending');
@@ -984,6 +1066,7 @@ function finishTool(ev) {
   if (interesting || state.cfg?.ui?.collapseTools === false) openTool(rec);
 
   if (!ev.ok && DENIED_RE.test(out)) denialCard(out, rec.name);
+  maybeServeChip(out);
 }
 
 function todosHTML(items) {

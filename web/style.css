@@ -612,6 +612,9 @@ body.scrim #scrim { opacity: 1; pointer-events: auto; }
 .share-urls .u.best .val { color: var(--accent); }
 .muted { color: var(--faint); font-size: 11px; margin: 13px 0 0; line-height: 1.6; text-align: left; }
 
+.serve-row { display: flex; gap: 7px; flex-wrap: wrap; margin: 2px 0 10px 35px; }
+body[data-surface="terminal"] .serve-row { margin-left: 0; }
+
 /* activity + ports */
 .act-list { display: flex; flex-direction: column; gap: 6px; }
 .act-row {

@@ -308,6 +308,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": str(exc)}, 500)
             return self._json({"session": s.meta()})
 
+        if path == "/api/session-delete":
+            sid = str(body.get("id") or "")
+            if not SESSION_ID_RE.match(sid):
+                return self._json({"error": "bad session id"}, 400)
+            for s in MANAGER.sessions.values():
+                if s.claude_session_id == sid and s.status != "closed":
+                    return self._json({"error": "that session is open here — close it first"}, 409)
+            if live.session_holder(sid):
+                return self._json({"error": "something else has that session open"}, 409)
+            result = projects.trash_session(sid)
+            return self._json(result, 200 if result.get("ok") else 400)
+
         if path == "/api/relay":
             try:
                 port = int(body.get("port"))
